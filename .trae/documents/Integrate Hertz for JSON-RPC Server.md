@@ -1,23 +1,23 @@
-Understanding your preference for a "more native" approach, I will implement the JSON-RPC server using pure Hertz handlers without relying on the `net/rpc` adapter.
+You are absolutely right. Manual dispatch is not scalable and error-prone. To address this and the streaming requirement, I will implement a **Generic Reflection-based JSON-RPC Dispatcher** on top of Hertz, and migrate the streaming logic to **WebSockets** (the native Hertz way for streaming).
 
-This approach involves:
-1.  **Native Hertz Handler**: Using Hertz's `RequestContext` to directly handle HTTP POST requests at `/jsonRpc`.
-2.  **Manual JSON-RPC Binding**: Defining structs for JSON-RPC Request/Response and using Hertz's `Bind` method to parse the incoming JSON.
-3.  **Direct Service Call**: Manually dispatching the request to `handler.HelloService` within the Hertz handler, avoiding the `net/rpc` reflection overhead and adapter complexity.
+Here is the refined plan:
 
-**Implementation Steps:**
+1.  **Implement Generic `hertzrpc` Package**:
+    - I will create a `pkg/hertzrpc` package.
+    - It will use Go's `reflect` package to automatically inspect registered services (just like `net/rpc`).
+    - **Features**:
+        - `Register(service interface{})`: Automatically registers all exported methods.
+        - `Handle(ctx, c)`: A generic Hertz handler that parses JSON, finds the method via reflection, unmarshals parameters into the *correct types* (solving type safety), calls the method, and returns the response.
+    - This eliminates the boilerplate. You can add 50 methods and just call `Register` once.
 
-1.  **Update Dependencies**: Add `github.com/cloudwego/hertz` to `go.mod`.
-2.  **Create `hertzServer.go`**:
-    - Define `JsonRpcRequest` and `JsonRpcResponse` structs to match the JSON-RPC 2.0 specification (compatible with your client).
-    - Implement a Hertz handler that:
-        - Binds the request JSON.
-        - Checks the `Method` (e.g., "HelloService.Hello").
-        - Extracts parameters.
-        - Calls `handler.HelloService{}.Hello` directly.
-        - Returns the response using `c.JSON`.
-3.  **Verification**:
-    - Run the new Hertz server.
-    - Test using the existing `pyhttpRpcClient.py` to ensure it works exactly as the old server did.
+2.  **Integrate Streaming (WebSockets)**:
+    - Your existing `streamClient.go` uses gRPC (HTTP/2 based). Hertz is an HTTP framework and cannot serve a standard gRPC client natively.
+    - To provide a "native Hertz" streaming experience, I will implement a **WebSocket** endpoint (`/stream`) in the Hertz server.
+    - I will create a new `wsClient.go` to demonstrate how to consume this streaming endpoint, replicating the bidirectional logic from your gRPC example.
 
-This provides a clean, modern, and "native" Hertz implementation.
+3.  **Project Structure Update**:
+    - `go.mod`: Add `hertz` and `hertz-contrib/websocket`.
+    - `hertzServer.go`: The main entry point integrating both JSON-RPC (via the new package) and WebSockets.
+    - `pkg/hertzrpc/`: The reusable RPC logic.
+
+This approach gives you the scalability of `net/rpc`, the performance of Hertz, and a modern streaming solution.
