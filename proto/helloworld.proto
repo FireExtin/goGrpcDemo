@@ -1,0 +1,31 @@
+syntax = "proto3";
+option go_package = "awesomeproject/proto";
+
+service Greeter {
+  rpc SayHello (HelloRequest) returns (HelloReply);
+  rpc SayBye(ByeRequest) returns (HelloReply);
+  rpc GetStream(StreamReqData) returns (stream StreamResData) ; // server side stream mode
+  rpc PutStream(stream StreamReqData) returns (StreamResData);         // client side stream mode
+  rpc AllStream(stream StreamReqData) returns (stream StreamResData); // all side stream mode
+}
+
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloReply {
+  string message = 1;
+}
+
+message ByeRequest {
+  string name = 1;
+  string message = 2;
+}
+
+message StreamReqData {
+  string data = 1;
+}
+
+message StreamResData {
+  string data = 1;
+}
